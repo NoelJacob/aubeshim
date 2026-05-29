@@ -388,6 +388,30 @@ shim = ["~/devel/work/*"]
     }
 
     #[test]
+    fn npm_install_no_fund_with_packages_is_removed() {
+        let plan = plan_for(ShimTool::Npm, &os(&["install", "react", "--no-fund"]));
+
+        assert_eq!(plan.target, Target::Aube);
+        assert_eq!(strings(&plan.args), vec!["add", "react"]);
+    }
+
+    #[test]
+    fn npm_install_no_fund_without_packages_is_removed() {
+        let plan = plan_for(ShimTool::Npm, &os(&["install", "--no-fund"]));
+
+        assert_eq!(plan.target, Target::Aube);
+        assert_eq!(strings(&plan.args), vec!["install"]);
+    }
+
+    #[test]
+    fn npm_ci_no_fund_is_removed() {
+        let plan = plan_for(ShimTool::Npm, &os(&["ci", "--no-fund"]));
+
+        assert_eq!(plan.target, Target::Aube);
+        assert_eq!(strings(&plan.args), vec!["ci"]);
+    }
+
+    #[test]
     fn npm_install_omit_filters_use_aube_equivalents() {
         let plan = plan_for(
             ShimTool::Npm,
