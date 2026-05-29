@@ -368,15 +368,27 @@ fn has_json_marker(args: &[OsString]) -> bool {
 }
 
 fn translate_npm_install_package_args(args: &[OsString]) -> Vec<OsString> {
-    args.iter()
-        .filter_map(|arg| {
-            let s = arg.to_string_lossy();
-            match s.as_ref() {
-                "--save" | "--save-prod" => None,
-                _ => Some(arg.clone()),
+    let mut out = Vec::with_capacity(args.len());
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].to_string_lossy();
+        if arg.starts_with("--") {
+            let name = long_flag_name(&arg);
+            if matches!(arg.as_ref(), "--save" | "--save-prod")
+                || npm_install_flag_should_be_dropped(name)
+            {
+                if name == "audit-level" && !arg.contains('=') {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                continue;
             }
-        })
-        .collect()
+        }
+        out.push(args[i].clone());
+        i += 1;
+    }
+    out
 }
 
 fn translate_global_outdated_args(args: &[OsString]) -> Vec<OsString> {
@@ -437,6 +449,17 @@ fn translate_omit_args(args: &[OsString]) -> Option<Vec<OsString>> {
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].to_string_lossy();
+        if arg.starts_with("--") {
+            let name = long_flag_name(&arg);
+            if npm_install_flag_should_be_dropped(name) {
+                if name == "audit-level" && !arg.contains('=') {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+        }
         if arg == "--omit" {
             let value = args.get(i + 1)?.to_string_lossy();
             push_omit_translation(&mut out, &value)?;
@@ -830,7 +853,8 @@ fn global_package_flag_takes_value(name: &str) -> bool {
 fn install_flag_takes_value(name: &str) -> bool {
     matches!(
         name,
-        "cache"
+        "audit-level"
+            | "cache"
             | "cpu"
             | "include"
             | "install-strategy"
@@ -845,6 +869,10 @@ fn install_flag_takes_value(name: &str) -> bool {
             | "userconfig"
             | "workspace"
     )
+}
+
+fn npm_install_flag_should_be_dropped(name: &str) -> bool {
+    matches!(name, "audit" | "audit-level" | "fund" | "no-audit" | "no-fund")
 }
 
 fn short_global_flag_takes_value(arg: &str) -> bool {
